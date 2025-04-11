@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,16 +29,29 @@ public class PdfAnalyzerService {
         }
     }
 
-    public ByteArrayInputStream extractAndGenerateCsv(MultipartFile file) throws IOException {
-        byte[] pdfBytes = file.getInputStream().readAllBytes();
+    public ByteArrayInputStream extractAndGenerateCsv(MultipartFile[] files) throws IOException {
+        List<TransacaoDTO> todasTransacoes = new ArrayList<>();
+        for (MultipartFile file : files) {
+            byte[] pdfBytes = file.getInputStream().readAllBytes();
 
-        try (PDDocument document = Loader.loadPDF(pdfBytes)) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            String text = stripper.getText(document);
+            try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+                PDFTextStripper stripper = new PDFTextStripper();
+                String text = stripper.getText(document);
 
-            List<TransacaoDTO> transacoes = extractTransacoes(text);
-            return gerarCsv(transacoes);
+                List<TransacaoDTO> transacoes = extractTransacoes(text);
+                todasTransacoes.addAll(transacoes);
+            }
         }
+
+        todasTransacoes.sort(Comparator.comparing(t -> {
+            try {
+                return LocalDate.parse(t.getData(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            } catch (DateTimeParseException e) {
+                return LocalDate.MIN; // datas inválidas vão pro começo
+            }
+        }));
+
+        return gerarCsv(todasTransacoes);
     }
 
     public List<TransacaoDTO> extractTransacoes(String textoPdf) {
