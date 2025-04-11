@@ -1,4 +1,4 @@
-package com.nicoletti.pdf_insight;
+package com.nicoletti.pdfinsight;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
