@@ -4,106 +4,96 @@
   Feito com Java + Spring Boot ☕🚀
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Spring%20Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white"/>
-  <img src="https://img.shields.io/badge/PDFBox-008CBA?style=for-the-badge"/>
-</p>
+
+![Java](https://img.shields.io/badge/Java-21-blue?style=flat-square&logo=java)
+![Spring Boot](https://img.shields.io/badge/SpringBoot-3.4.4-brightgreen?style=flat-square&logo=spring-boot)
+![PDFBox](https://img.shields.io/badge/PDFBox-3.0.4-red?style=flat-square&logo=adobeacrobatreader)
 
 ---
 
 ## 🚀 Funcionalidades
 
-- Upload de arquivos PDF via API
-- Extração de texto utilizando Apache PDFBox
-- Processamento e retorno dos dados em formato JSON
-- Arquitetura limpa com Spring Boot
-- Pronto para integração com serviços de IA (ex: OpenAI)
+- Processa **vários PDFs de extratos bancários** ao mesmo tempo
+- Extrai dados de transações como:
+    - BUY / SELL
+    - REG INT (juros de títulos)
+    - DIV (dividendos)
+    - INCOMING WIRE TRANSFER
+    - CUSTOD FI (taxas de custódia)
+- Gera um arquivo `.csv` consolidado com os dados extraídos
+- Ordena as transações por **data (dd/MM/yyyy)**
 
 ---
 
-## 🛠️ Tecnologias utilizadas
+## 📥 Como usar
+
+### ▶️ Endpoint: `/analyze`
+
+**Método:** `POST`  
+**Tipo de conteúdo:** `multipart/form-data`  
+**Campo(s):** `files` (pode conter um ou vários arquivos PDF)
+
+---
+
+## 🧪 Exemplos
+
+### 📌 Usando Postman:
+
+1. Vá em **Body > form-data**
+2. Adicione vários campos com chave `files` e tipo `File`
+3. Envie a requisição
+4. O resultado virá como um arquivo `.csv` para download
+
+### 📌 Usando cURL:
+
+```bash
+curl -X POST http://localhost:8080/analyze \
+  -F "files=@/caminho/para/arquivo1.pdf" \
+  -F "files=@/caminho/para/arquivo2.pdf" \
+  -o resultado.csv
+```
+
+---
+
+## 💾 Exemplo de saída `.csv`
+
+```csv
+DATA;HISTORICO;VALOR
+06/06/2024;BUY QTY 23 PRICE 251.7156;5789.58
+06/18/2024;SELL QTY 33 PRICE 105.7650;3489.98
+10/06/2024;REG INT - 4.687%;4687.00
+...
+```
+
+---
+
+## 🛠️ Tecnologias usadas
 
 - Java 21
-- Spring Boot 3
-- Apache PDFBox
-- Maven
-- Lombok
+- Spring Boot 3.4.4
+- Apache PDFBox 3.0.4
 
 ---
 
 ## ▶️ Como rodar localmente
 
-### Pré-requisitos
-- Java 21 (LTS)
-- Maven
-
-### Passos:
-
 ```bash
-# Clone o repositório
 git clone https://github.com/andregnicoletti/pdf-insight.git
 cd pdf-insight
-
-# Rode o projeto
 ./mvnw spring-boot:run
 ```
 
-Acesse: `http://localhost:8080`
-
----
-
-## 📁 Estrutura do projeto
-
-```
-pdf-insight/
-├── controller/       # Endpoints REST
-├── service/          # Lógica de negócio
-├── model/            # DTOs e modelos
-├── PdfInsightApp.java
-```
-
----
-
-## 📚 Exemplo de uso da API
-
-### 📥 POST `/analyze`
-
-Envia um arquivo PDF para análise.
-
-**Requisição:**
-- Content-Type: `multipart/form-data`
-- Body: arquivo PDF
-
-**Resposta:**
-```json
-{
-  "nome": "André Nicoletti",
-  "cpf": "000.000.000-00",
-  "dataNascimento": "1987-06-12",
-  "email": "andregnicoletti@gmail.com"
-}
-```
-
-> 🔎 Os dados variam de acordo com o conteúdo do PDF
-
----
-
-## 💡 Próximos passos
-
-- Integração com IA (OpenAI / HuggingFace) para extração mais inteligente
-- Suporte a OCR (PDFs escaneados)
-- Persistência dos dados em banco
-- Interface web para upload e visualização
+Acesse em: [http://localhost:8080/analyze](http://localhost:8080/analyze)
 
 ---
 
 ## 👨‍💻 Autor
 
-Feito com 💙 por [André Nicoletti](https://www.linkedin.com/in/andre-nicoletti)  
-📧 andregnicoletti@gmail.com
+**André Nicoletti**  
+📧 andregnicoletti@gmail.com  
+🔗 [linkedin.com/in/andre-nicoletti](https://www.linkedin.com/in/andre-nicoletti)
 
 ---
 
-> "Código limpo é como uma boa piada – não precisa de explicação." — *Martin Fowler*
+> “Código limpo é como uma boa piada – não precisa de explicação.”  
+> — *Martin Fowler*

@@ -26,9 +26,9 @@ public class PdfAnalyzerController {
     }
 
     @PostMapping
-    public ResponseEntity<byte[]> analyzePdf(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<byte[]> analyzePdf(@RequestPart("files") MultipartFile[] files) {
         try {
-            ByteArrayInputStream csvStream = service.extractAndGenerateCsv(file);
+            ByteArrayInputStream csvStream = service.extractAndGenerateCsv(files);
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"transacoes.csv\"")
