@@ -1,4 +1,4 @@
-package com.nicoletti.pdf_insight;
+package com.nicoletti.pdfinsight;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
