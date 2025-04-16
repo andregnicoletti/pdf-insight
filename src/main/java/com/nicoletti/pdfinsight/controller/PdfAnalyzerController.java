@@ -16,20 +16,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 @RestController
-@RequestMapping("/analyze")
+@RequestMapping("/pdf")
 @RequiredArgsConstructor
 public class PdfAnalyzerController {
 
     private final PdfAnalyzerService service;
 
-    private final OpenAiService openAiService;
-
-    @GetMapping("/health")
-    public ResponseEntity<Boolean> status() {
-        return ResponseEntity.ok(true);
-    }
-
-    @PostMapping
+    @PostMapping("/upload")
     public ResponseEntity<byte[]> analyzePdf(@RequestPart("files") MultipartFile[] files) {
         try {
             ByteArrayInputStream csvStream = service.extractAndGenerateCsv(files);
@@ -45,26 +38,5 @@ public class PdfAnalyzerController {
                     .body(("Erro ao processar PDF: " + e.getMessage()).getBytes());
         }
     }
-
-    @PostMapping(value = "/upload")
-    public ResponseEntity<Resource> uploadPdf(@RequestParam("file") MultipartFile file) throws IOException {
-        System.out.println("Chegou aqui ✔️");
-
-        // 1. Extrai texto do PDF
-        String textoExtraido = this.service.extractText(file);
-
-        // 2. Chama a OpenAI
-        String csv = openAiService.gerarRespostaIA(textoExtraido);
-
-        // 3. Constrói o CSV como recurso para download
-        byte[] csvBytes = csv.getBytes(StandardCharsets.UTF_8);
-        ByteArrayResource resource = new ByteArrayResource(csvBytes);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=extrato.csv")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(resource);
-    }
-
 
 }
