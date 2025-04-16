@@ -31,13 +31,9 @@ public class PdfAnalyzerService {
         List<TransacaoDTO> todasTransacoes = new ArrayList<>();
         for (MultipartFile file : files) {
             byte[] pdfBytes = file.getInputStream().readAllBytes();
-
-            try (PDDocument document = Loader.loadPDF(pdfBytes)) {
-                PDFTextStripper stripper = new PDFTextStripper();
-                String text = stripper.getText(document);
-                List<TransacaoDTO> transacoes = extractTransacoes(text);
-                todasTransacoes.addAll(transacoes);
-            }
+            String text = this.extractText(file);
+            List<TransacaoDTO> transacoes = extractTransacoes(text);
+            todasTransacoes.addAll(transacoes);
         }
 
         todasTransacoes.sort(Comparator.comparing(t -> {
