@@ -12,9 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,7 +35,6 @@ public class PdfAnalyzerService {
             try (PDDocument document = Loader.loadPDF(pdfBytes)) {
                 PDFTextStripper stripper = new PDFTextStripper();
                 String text = stripper.getText(document);
-
                 List<TransacaoDTO> transacoes = extractTransacoes(text);
                 todasTransacoes.addAll(transacoes);
             }
@@ -47,7 +44,7 @@ public class PdfAnalyzerService {
             try {
                 return LocalDate.parse(t.getData(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             } catch (DateTimeParseException e) {
-                return LocalDate.MIN; // datas inválidas vão pro começo
+                return LocalDate.MIN;
             }
         }));
 
@@ -57,7 +54,7 @@ public class PdfAnalyzerService {
     public List<TransacaoDTO> extractTransacoes(String textoPdf) {
         List<TransacaoDTO> transacoes = new ArrayList<>();
 
-        String normalizado = textoPdf.replaceAll("\\n", " ");
+        String normalizado = textoPdf.replaceAll("\n", " ");
 
         transacoes.addAll(extrairBuy(normalizado));
         transacoes.addAll(extrairSell(normalizado));
@@ -73,17 +70,19 @@ public class PdfAnalyzerService {
         List<TransacaoDTO> lista = new ArrayList<>();
 
         Pattern pattern = Pattern.compile(
-                "(\\d{2}/\\d{2}/\\d{4})\\s+BUY.*?QTY\\s+(\\d+(?:\\.\\d+)?)\\s+PRICE\\s+(\\d+(?:\\.\\d+)?).*?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})"
+                "(\\d{2}/\\d{2}/\\d{4})\\s+BUY\\s+([A-Z0-9\\s\\.&-]+?)\\s+QTY\\s+(\\d+(?:\\.\\d+)?)\\s+PRICE\\s+(\\d+(?:\\.\\d+)?).*?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})",
+                Pattern.CASE_INSENSITIVE
         );
-        Matcher matcher = pattern.matcher(texto);
 
+        Matcher matcher = pattern.matcher(texto);
         while (matcher.find()) {
             String data = formatarData(matcher.group(1));
-            String qtd = matcher.group(2);
-            String preco = matcher.group(3);
-            String valor = matcher.group(4).replace(",", "");
+            String emitente = matcher.group(2).trim();
+            String qtd = matcher.group(3);
+            String preco = matcher.group(4);
+            String valor = matcher.group(5).replace(",", "");
 
-            String historico = String.format("BUY QTY %s PRICE %s", qtd, preco);
+            String historico = String.format("BUY QTY %s PRICE %s - %s", qtd, preco, emitente);
             lista.add(new TransacaoDTO(data, historico, new BigDecimal(valor)));
         }
 
@@ -94,17 +93,19 @@ public class PdfAnalyzerService {
         List<TransacaoDTO> lista = new ArrayList<>();
 
         Pattern pattern = Pattern.compile(
-                "(\\d{2}/\\d{2}/\\d{4})\\s+SELL.*?QTY\\s+-?(\\d+(?:\\.\\d+)?)\\s+PRICE\\s+(\\d+(?:\\.\\d+)?).*?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})"
+                "(\\d{2}/\\d{2}/\\d{4})\\s+SELL\\s+([A-Z0-9\\s\\.&-]+?)\\s+QTY\\s+-?(\\d+(?:\\.\\d+)?)\\s+PRICE\\s+(\\d+(?:\\.\\d+)?).*?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})",
+                Pattern.CASE_INSENSITIVE
         );
-        Matcher matcher = pattern.matcher(texto);
 
+        Matcher matcher = pattern.matcher(texto);
         while (matcher.find()) {
             String data = formatarData(matcher.group(1));
-            String qtd = matcher.group(2);
-            String preco = matcher.group(3);
-            String valor = matcher.group(4).replace(",", "");
+            String emitente = matcher.group(2).trim();
+            String qtd = matcher.group(3);
+            String preco = matcher.group(4);
+            String valor = matcher.group(5).replace(",", "");
 
-            String historico = String.format("SELL QTY %s PRICE %s", qtd, preco);
+            String historico = String.format("SELL QTY %s PRICE %s - %s", qtd, preco, emitente);
             lista.add(new TransacaoDTO(data, historico, new BigDecimal(valor)));
         }
 
@@ -115,47 +116,43 @@ public class PdfAnalyzerService {
         List<TransacaoDTO> lista = new ArrayList<>();
 
         Pattern pattern = Pattern.compile(
-                "(\\d{2}/\\d{2}/\\d{4})[^$%]{0,100}?(\\d+(?:\\.\\d+))%?.*?\\$?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})",
+                "(\\d{2}/\\d{2}/\\d{4})\\s+(.*?)\\s+(\\d+(?:\\.\\d+))\\s+REG INT\\s+ON.*?\\$?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})",
                 Pattern.CASE_INSENSITIVE
         );
+
         Matcher matcher = pattern.matcher(texto);
-
         while (matcher.find()) {
-            String trecho = matcher.group(0).toUpperCase();
+            String data = formatarData(matcher.group(1));
+            String emitente = matcher.group(2).replaceAll("\s+", " ").trim();
+            String taxa = matcher.group(3);
+            String valor = matcher.group(4).replace(",", "");
 
-            if (trecho.contains("REG") || trecho.contains("INTEREST") || trecho.contains("COUPON")) {
-                String data = formatarData(matcher.group(1));
-                String taxa = matcher.group(2);
-                String valor = matcher.group(3).replace(",", "");
+            BigDecimal valorDecimal = new BigDecimal(valor);
+            if (valorDecimal.compareTo(new BigDecimal("10")) < 0) continue;
 
-                BigDecimal valorDecimal = new BigDecimal(valor);
-
-                // Ignorar valores muito baixos (ex: 3.25), que não representam pagamento de juros
-                if (valorDecimal.compareTo(new BigDecimal("10")) < 0) {
-                    continue;
-                }
-
-                String historico = "REG INT - " + taxa + "%";
-
-                lista.add(new TransacaoDTO(data, historico, valorDecimal));
+            // Reduzir excesso no nome do emitente se estiver muito longo
+            if (emitente.length() > 40) {
+                emitente = emitente.substring(0, 40).trim();
             }
+
+            String historico = String.format("REG INT - %s%% - %s", taxa, emitente);
+            lista.add(new TransacaoDTO(data, historico, valorDecimal));
         }
 
         return lista;
     }
 
 
+
     private List<TransacaoDTO> extrairCustodia(String texto) {
         List<TransacaoDTO> lista = new ArrayList<>();
-
-        String normalizado = texto.replaceAll("\\n", " ");
 
         Pattern pattern = Pattern.compile(
                 "(\\d{2}/\\d{2}/\\d{4}).*?CUSTOD.*?\\$?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})",
                 Pattern.CASE_INSENSITIVE
         );
-        Matcher matcher = pattern.matcher(normalizado);
 
+        Matcher matcher = pattern.matcher(texto);
         while (matcher.find()) {
             String data = formatarData(matcher.group(1));
             String valor = matcher.group(2).replace(",", "");
@@ -167,23 +164,21 @@ public class PdfAnalyzerService {
         return lista;
     }
 
-
     private List<TransacaoDTO> extrairDiv(String texto) {
         List<TransacaoDTO> lista = new ArrayList<>();
 
         Pattern pattern = Pattern.compile(
-                "(\\d{2}/\\d{2}/\\d{4}).*?([A-Z0-9\\s]{5,}?)\\s+CASH DIV.*?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})",
+                "(\\d{2}/\\d{2}/\\d{4}).*?([A-Z0-9\\s\\.\\-&]{5,}?)\\s+CASH DIV.*?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})",
                 Pattern.CASE_INSENSITIVE
         );
 
         Matcher matcher = pattern.matcher(texto);
-
         while (matcher.find()) {
             String data = formatarData(matcher.group(1));
-            String nome = matcher.group(2).trim();
+            String emitente = matcher.group(2).trim();
             String valor = matcher.group(3).replace(",", "");
 
-            String historico = "DIV " + nome;
+            String historico = "DIV - " + emitente;
             lista.add(new TransacaoDTO(data, historico, new BigDecimal(valor)));
         }
 
@@ -199,13 +194,12 @@ public class PdfAnalyzerService {
         );
 
         Matcher matcher = pattern.matcher(texto);
-
         while (matcher.find()) {
             String data = formatarData(matcher.group(1));
             String nome = matcher.group(2).trim();
             String valor = matcher.group(3).replace(",", "");
 
-            String historico = "INCOMING WIRE TRANSFER " + nome;
+            String historico = "INCOMING WIRE TRANSFER - " + nome;
             lista.add(new TransacaoDTO(data, historico, new BigDecimal(valor)));
         }
 
@@ -230,8 +224,7 @@ public class PdfAnalyzerService {
             LocalDate date = LocalDate.parse(dataAmericana, DateTimeFormatter.ofPattern("MM/dd/yyyy"));
             return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         } catch (DateTimeParseException e) {
-            return dataAmericana; // fallback caso dê ruim
+            return dataAmericana;
         }
     }
-
 }
